@@ -84,7 +84,7 @@ def test_infer_msg():
 
     response500 = Mock(status=500, reason='ccc')
     error500 = aiogTTSError(lang='en', lang_check=True, response=response500)
-    assert error500.msg == "500 (ccc) from TTS API. Probable cause: Uptream API error. Try again later"
+    assert error500.msg == "500 (ccc) from TTS API. Probable cause: Upstream API error. Try again later"
 
     response100 = Mock(status=100, reason='ddd')
     error100 = aiogTTSError(lang='en', lang_check=True, response=response100)

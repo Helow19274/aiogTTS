@@ -5,7 +5,7 @@ from aiogtts.tokenizer.core import RegexBuilder, PreProcessorRegex, PreProcessor
 
 def test_regexbuilder():
     rb = RegexBuilder('abc', lambda x: str(x))
-    assert rb.regex == re.compile('[abc]')
+    assert rb.regex == re.compile('a|b|c')
 
 
 def test_preprocessorregex():

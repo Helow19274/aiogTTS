@@ -48,7 +48,7 @@ async def tts_langs(session):
         langs = {}
         langs.update(await _fetch_langs(session))
         langs.update(EXTRA_LANGS)
-        log.debug(f'langs: {langs}')
+        log.debug(f'Langs: {langs}')
         return langs
     except Exception as e:
         raise RuntimeError(f'Unable to get language list: {str(e)}')
@@ -85,7 +85,7 @@ async def _fetch_langs(session):
     # In: "[...]Fv={af:1,ar:1,[...],zh:1,"zh-cn":1,"zh-tw":1}[...]"
     # Out: ['is', '12', [...], 'af', 'ar', [...], 'zh', 'zh-cn', 'zh-tw']
     pattern = r'[{,\"](\w{2}|\w{2}-\w{2,3})(?=:1|\":1)'
-    tts_langs = re.findall(pattern, js_contents)
+    g_langs = re.findall(pattern, js_contents)
 
     # Build lang. dict. from main page (JavaScript object populating lang. menu)
     # Filtering with the TTS-enabled languages
@@ -94,4 +94,4 @@ async def _fetch_langs(session):
     # Out: {'af': 'Afrikaans', [...]}
     trans_pattern = r"{code:'(?P<lang>.+?[^'])',name:'(?P<name>.+?[^'])'}"
     trans_langs = re.findall(trans_pattern, text)
-    return {lang: name for lang, name in trans_langs if lang in tts_langs}
+    return {lang: name for lang, name in trans_langs if lang in g_langs}

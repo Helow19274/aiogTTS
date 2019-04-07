@@ -48,7 +48,7 @@ class PreProcessorRegex(object):
     """Regex-based substitution text pre-processor.
 
     Runs a series of regex substitutions (``re.sub``) from each ``regex`` of a
-    :class:`aigtts.tokenizer.core.RegexBuilder` with an extra ``repl``
+    :class:`aiogtts.tokenizer.core.RegexBuilder` with an extra ``repl``
     replacement parameter.
 
     :param search_args: String element(s) to be each passed to
@@ -103,7 +103,7 @@ class PreProcessorSub(object):
     """Simple substitution text preprocessor.
 
     Performs string-for-string substitution from list a find/replace pairs.
-    It abstracts :class:`gtts.tokenizer.core.PreProcessorRegex` with a default
+    It abstracts :class:`aiogtts.tokenizer.core.PreProcessorRegex` with a default
     simple substitution regex.
 
     :param sub_pairs: list of tuples of the style (<search str>, <replace str>)
@@ -153,7 +153,7 @@ class Tokenizer(object):
 
     ``regex_funcs`` is a list of any function that can return a ``regex``
     (from ``re.compile()``) object, such as a
-    :class:`gtts.tokenizer.core.RegexBuilder` instance (and its ``regex``
+    :class:`aiogtts.tokenizer.core.RegexBuilder` instance (and its ``regex``
     attribute).
 
     :param regex_funcs: List of compiled ``regex`` objects. Each
@@ -172,11 +172,11 @@ class Tokenizer(object):
 
     Warning:
         Joined ``regex`` patterns can easily interfere with one another in
-        unexpected ways. It is recommanded that each tokenizer case operate
-        on distinct or non-overlapping chracters/sets of characters
+        unexpected ways. It is recommended that each tokenizer case operate
+        on distinct or non-overlapping characters/sets of characters
         (For example, a tokenizer case for the period (".") should also
         handle not matching/cutting on decimals, instead of making that
-        a seperate tokenizer case).
+        a separate tokenizer case).
     """
 
     def __init__(self, regex_funcs, flags=re.IGNORECASE):

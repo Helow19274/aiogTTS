@@ -3,7 +3,7 @@
 **aiogTTS** (asynchronous Google Text-to-Speech), a Python library to interface with Google Translate's text-to-speech API.
 Writes spoken mp3 data to a file or a file-like object (bytestring) for further audiomanipulation.
 
-## Original gTTS and gTTS-token:
+## Original gTTS and gTTS-token
 - <https://github.com/pndurette/gTTS/> (75% of this repo)
 - <https://github.com/Boudewijn26/gTTS-token/> (token.py in this repo)
 
@@ -21,14 +21,14 @@ $ pip install aiogTTS
 ```python
 import asyncio
 from io import BytesIO
-from aiogtts import gTTS
+from aiogtts import aiogTTS
 
 
 async def main():
     aiogtts = aiogTTS()
-    bytes = BytesIO()
+    io = BytesIO()
     await aiogtts.save('Привет, мир!', 'audio.mp3', lang='ru')
-    await aiogtts.write_to_fp('Hallo!', bytes, slow=True, lang='de')
+    await aiogtts.write_to_fp('Hallo!', io, slow=True, lang='de')
 
 
 asyncio.get_event_loop().run_until_complete(main())

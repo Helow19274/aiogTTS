@@ -1,11 +1,11 @@
 import re
-from aiogtts.tokenizer import PreProcessorRegex, PreProcessorSub, symbols
+from . import PreProcessorRegex, PreProcessorSub, symbols
 
 
 def tone_marks(text):
     """Add a space after tone-modifying punctuation.
 
-    Because the `tone_marks` tokenizer case will split after a tone-modidfying
+    Because the `tone_marks` tokenizer case will split after a tone-modifying
     punctuation mark, make sure there's whitespace after.
     """
 
@@ -29,7 +29,7 @@ def end_of_line(text):
 
 def abbreviations(text):
     """Remove periods after an abbreviation from a list of known
-    abbrevations that can be spoken the same without that period. This
+    abbreviations that can be spoken the same without that period. This
     prevents having to handle tokenization of that period.
 
     Note:

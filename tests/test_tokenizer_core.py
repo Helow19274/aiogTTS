@@ -5,7 +5,7 @@ from aiogtts.tokenizer.core import RegexBuilder, PreProcessorRegex, PreProcessor
 
 def test_regexbuilder():
     rb = RegexBuilder('abc', lambda x: str(x))
-    assert rb.regex == re.compile('a|b|c')
+    assert rb.regex == re.compile('[abc]')
 
 
 def test_preprocessorregex():
@@ -25,7 +25,7 @@ def test_proprocessorsub():
 
 # tokenizer case 1
 def case1():
-    return re.compile(r'\,')
+    return re.compile(',')
 
 
 # tokenizer case 2

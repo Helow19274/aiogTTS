@@ -12,7 +12,7 @@ log.addHandler(logging.NullHandler())
 
 
 class aiogTTS(object):
-    """gTTS -- Google Text-to-Speech.
+    """aiogTTS -- Async Google Text-to-Speech.
 
     An interface to Google Translate's Text-to-Speech API.
     :param pre_processor_funcs: A list of zero or more functions that are
@@ -157,7 +157,7 @@ class aiogTTS(object):
         :type text: str
 
         :param savefile: Name of file to write the mp3 to
-        :type fp: str
+        :type savefile: str
 
         :param lang: Language
         :type lang: str
@@ -205,6 +205,6 @@ class aiogTTSError(Exception):
         elif status == 404 and not self.lang_check:
             cause = f"Unsupported language '{self.lang}'"
         elif status >= 500:
-            cause = 'Uptream API error. Try again later'
+            cause = 'Upstream API error. Try again later'
 
         return f'{status} ({reason}) from TTS API. Probable cause: {cause}'

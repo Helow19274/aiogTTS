@@ -1,4 +1,4 @@
-from aiogtts.tokenizer import RegexBuilder, symbols
+from . import RegexBuilder, symbols
 
 
 def tone_marks():
@@ -30,7 +30,7 @@ def period_comma():
 def colon():
     """Colon case.
 
-    Match a colon ":" only if not preceeded by a digit.
+    Match a colon ":" only if not preceded by a digit.
     Mainly to prevent a cut in the middle of time notations e.g. 10:01
     """
 

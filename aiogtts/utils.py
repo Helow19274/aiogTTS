@@ -1,8 +1,8 @@
 import re
 from string import whitespace
-from aiogtts.tokenizer.symbols import ALL_PUNC as punc
+from .tokenizer.symbols import ALL_PUNC
 
-_ALL_PUNC_OR_SPACE = re.compile(f'^[{re.escape(punc + whitespace)}]*$')
+_ALL_PUNC_OR_SPACE = re.compile(f'^[{re.escape(ALL_PUNC + whitespace)}]*$')
 """Regex that matches if an entire line is only comprised
 of whitespace and punctuation
 """

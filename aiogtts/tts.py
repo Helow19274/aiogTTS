@@ -28,25 +28,30 @@ class aiogTTS(object):
 
     GOOGLE_TTS_MAX_CHARS = 100
 
-    def __init__(
-        self,
-        pre_processor_funcs=[
-            pre_processors.tone_marks,
-            pre_processors.end_of_line,
-            pre_processors.abbreviations,
-            pre_processors.word_sub
-        ],
-        tokenizer_func=Tokenizer([
-            tokenizer_cases.tone_marks,
-            tokenizer_cases.period_comma,
-            tokenizer_cases.colon,
-            tokenizer_cases.other_punctuation
-        ]).run
-    ):
-        headers = {'User-Agent': 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0'}
+    def __init__(self, pre_processor_funcs=None, tokenizer_func=None):
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0'}
         self.session = aiohttp.ClientSession(headers=headers)
-        self.pre_processor_funcs = pre_processor_funcs
-        self.tokenizer_func = tokenizer_func
+
+        if pre_processor_funcs is None:
+            self.pre_processor_funcs = [
+                pre_processors.tone_marks,
+                pre_processors.end_of_line,
+                pre_processors.abbreviations,
+                pre_processors.word_sub
+            ]
+        else:
+            self.pre_processor_funcs = pre_processor_funcs
+
+        if self.tokenizer_func is None:
+            self.tokenizer_func = Tokenizer([
+                tokenizer_cases.tone_marks,
+                tokenizer_cases.period_comma,
+                tokenizer_cases.colon,
+                tokenizer_cases.other_punctuation
+            ]).run
+        else:
+            self.tokenizer_func = tokenizer_func
+
         self.token = Token(self.session)
 
     def __del__(self):
@@ -99,8 +104,7 @@ class aiogTTS(object):
         lang = lang.lower()
         if lang_check:
             try:
-                langs = await tts_langs(self.session)
-                if lang not in langs:
+                if lang not in await tts_langs(self.session):
                     raise ValueError(f'Language not supported: {lang}')
             except RuntimeError as e:
                 log.debug(str(e), exc_info=True)

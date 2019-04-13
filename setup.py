@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='aiogTTS',
-    version='1.0',
+    version='1.0.1',
 
     author='Helow19274',
     author_email='helow@helow19274.tk',

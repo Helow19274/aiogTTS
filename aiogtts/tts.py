@@ -42,7 +42,7 @@ class aiogTTS(object):
         else:
             self.pre_processor_funcs = pre_processor_funcs
 
-        if self.tokenizer_func is None:
+        if tokenizer_func is None:
             self.tokenizer_func = Tokenizer([
                 tokenizer_cases.tone_marks,
                 tokenizer_cases.period_comma,

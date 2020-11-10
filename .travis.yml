@@ -1,10 +1,12 @@
-dist: xenial
+dist: focal
 
 language: python
 
 python:
-- 3.7.3
-- 3.6.8
+- 3.6.12
+- 3.7.9
+- 3.8.6
+- 3.9
 
 git:
   depth: 3
@@ -17,10 +19,10 @@ script: pytest -v -s tests/
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
-  user: Helow19274
+  username: Helow19274
   password:
     secure: bfTRuKyJORqzwMZqTwFW8ObVuJECE6sxu0Aaaj+7+bZLS3uRpV2MFVGQb5/yDdUuX0LWikXBX9vLjIErbZrCI35yaPHmDoallSvtwW03PTqeRqtoPfr5w7QIzoELDYeMaMzGREH1TeOuj2D+A0NT1/CzswOlvph/W8rp2o2gsDfYeduF0R5ChIbo/q+TPGb4p7r9Phvai1PqBrnPtWvn9dXbcNI9TVkjaMA9smvOzxjlNq+zl54mfdVNvHyeKVkDNJ6/lPoK3nZkRH2bfzVpn58BjUQEgF8/25ZIicFUCeqczsE32mY5XM6rrvlH6mTI92+iIo8Q+JI2CKOqMARQGcAPoQss2IiSnzbj8OJbzScGmVMWLO2iovCk9tEdG0qF980CjOfIYX+0uhloqJOwlimAaF+Tp2qr5h5MTPBr3Y2OYC6g4VsvZmzd5QbBbh2NIT92g1NFpj04wBx1k4cLFKEKH9dKURDni7QS7Lh48ux2hIbpBXscOv3fUbqxEfJnAtCDCwnFcJ2sa/M16Fi73K+WyI9Lnnk9JX3oS86D+G+9XcjRPL9uz4tJ0wReIFyOF37+llc1CQXAM482Cq8hjv213hANrdXycuHzBsWpCySYr+Hqr4FZS1ibY/3DlBLO8wnbztK8PXSdbbsQVBQ7QWWyRgsT7GIdQzHq22RuPQI=
   on:
     tags: true
     repo: Helow19274/aiogTTS
-    python: 3.7.3
+    python: 3.8.6

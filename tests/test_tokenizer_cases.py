@@ -5,7 +5,7 @@ from aiogtts.tokenizer.tokenizer_cases import tone_marks, period_comma, colon, o
 
 def test_tone_marks():
     t = Tokenizer([tone_marks])
-    _in = "Lorem? Ipsum!"
+    _in = 'Lorem? Ipsum!'
     _out = ['Lorem?', 'Ipsum!']
     assert t.run(_in) == _out
 
@@ -25,7 +25,11 @@ def test_colon():
 
 
 def test_other_punctuation():
-    other_punc_str = ''.join(set(symbols.ALL_PUNC) - set(symbols.TONE_MARKS) - set(symbols.PERIOD_COMMA) - set(symbols.COLON))
+    other_punc_str = ''.join(
+        set(symbols.ALL_PUNC) -
+        set(symbols.TONE_MARKS) -
+        set(symbols.PERIOD_COMMA) -
+        set(symbols.COLON))
 
     t = Tokenizer([other_punctuation])
     assert len(t.run(other_punc_str)) - 1 == len(other_punc_str)

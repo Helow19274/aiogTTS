@@ -18,7 +18,7 @@ def tone_marks(text):
 def end_of_line(text):
     """Re-form words cut by end-of-line hyphens.
 
-    Remove "<hyphen><newline>".
+    Remove '<hyphen><newline>'.
     """
 
     return PreProcessorRegex(
@@ -43,7 +43,7 @@ def abbreviations(text):
 
     return PreProcessorRegex(
         search_args=symbols.ABBREVIATIONS,
-        search_func=lambda x: r'(?<={})(?=\.).'.format(x),
+        search_func=lambda x: rf'(?<={x})(?=\.).',
         repl='', flags=re.IGNORECASE).run(text)
 
 

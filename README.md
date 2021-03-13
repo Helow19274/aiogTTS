@@ -5,7 +5,6 @@ Writes spoken mp3 data to a file or a file-like object (bytestring) for further 
 
 ## Original gTTS and gTTS-token
 - <https://github.com/pndurette/gTTS/> (75% of this repo)
-- <https://github.com/Boudewijn26/gTTS-token/> (token.py in this repo)
 
 ## Features
 - Customizable speech-specific sentence tokenizer that allows for unlimited lengths of text to be read, all while keeping proper intonation, abbreviations, decimals and more;

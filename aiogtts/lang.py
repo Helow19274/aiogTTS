@@ -1,97 +1,92 @@
-import re
 import logging
-from bs4 import BeautifulSoup
 
-EXTRA_LANGS = {
-    'zh-cn': 'Chinese (Mandarin/China)',
-    'zh-tw': 'Chinese (Mandarin/Taiwan)',
+from warnings import warn
+from .langs import _main_langs
 
-    'en-us': 'English (US)',
-    'en-ca': 'English (Canada)',
-    'en-uk': 'English (UK)',
-    'en-gb': 'English (UK)',
-    'en-au': 'English (Australia)',
-    'en-gh': 'English (Ghana)',
-    'en-in': 'English (India)',
-    'en-ie': 'English (Ireland)',
-    'en-nz': 'English (New Zealand)',
-    'en-ng': 'English (Nigeria)',
-    'en-ph': 'English (Philippines)',
-    'en-za': 'English (South Africa)',
-    'en-tz': 'English (Tanzania)',
-
-    'fr-ca': 'French (Canada)',
-    'fr-fr': 'French (France)',
-
-    'pt-br': 'Portuguese (Brazil)',
-    'pt-pt': 'Portuguese (Portugal)',
-
-    'es-es': 'Spanish (Spain)',
-    'es-us': 'Spanish (United States)'
-}
+__all__ = ['tts_langs']
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-async def tts_langs(session):
+def tts_langs():
     """Languages Google Text-to-Speech supports.
 
-    :param session: Aiohttp session
-    :type session: :class:`aiohttp.ClientSession`
+    Returns:
+        dict: A dictionary of the type `{ '<lang>': '<name>'}`
 
-    :returns: A dict of TTS supported langs
-    :rtype: dict
+            Where `<lang>` is an IETF language tag such as `en` or `zh-TW`,
+            and `<name>` is the full English name of the language, such as
+            `English` or `Chinese (Mandarin/Taiwan)`.
+
+    The dictionary returned combines languages from two origins:
+
+    - Languages fetched from Google Translate (pre-generated in :mod:`aiogtts.langs`)
+    - Languages that are undocumented variations that were observed to work and
+      present different dialects or accents.
+
+    """
+    langs = dict()
+    langs.update(_main_langs())
+    langs.update(_extra_langs())
+    log.debug(f'langs: {langs}')
+    return langs
+
+
+def _extra_langs():
+    """Define extra languages.
+
+    Returns:
+        dict: A dictionary of extra languages manually defined.
+
+            Variations of the ones generated in `_main_langs`,
+            observed to provide different dialects or accents or
+            just simply accepted by the Google Translate Text-to-Speech API.
     """
 
-    try:
-        langs = {}
-        langs.update(await _fetch_langs(session))
-        langs.update(EXTRA_LANGS)
-        log.debug(f'Langs: {langs}')
-        return langs
-    except Exception as e:
-        raise RuntimeError(f'Unable to get language list: {str(e)}')
+    return {
+        'zh-TW': 'Chinese (Mandarin/Taiwan)',
+        'zh': 'Chinese (Mandarin)'
+    }
 
 
-async def _fetch_langs(session):
-    """Fetch (scrape) languages from Google Translate.
+def _fallback_deprecated_lang(lang):
+    """Languages Google Text-to-Speech used to support.
 
-    Google Translate loads a JavaScript Array of 'languages codes' that can
-    be spoken. We intersect this list with all the languages Google Translate
-    provides to get the ones that support text-to-speech.
+    Language tags that don't work anymore, but that can
+    fallback to a more general language code to maintain
+    compatibility.
 
-    :param session: Aiohttp session
-    :type session: :class:`aiohttp.ClientSession`
+    Args:
+        lang (string): The language tag.
 
-    :returns: A dict of languages from Google Translate
-    :rtype: dict
+    Returns:
+        string: The language tag, as-is if not deprecated,
+            or a fallback if it exits.
+
+    Example:
+        ``en-GB`` returns ``en``.
+        ``en-gb`` returns ``en``.
     """
 
-    async with session.get('http://translate.google.com') as r:
-        content = await r.read()
-        text = await r.text()
+    deprecated = {
+        # '<fallback>': [<list of deprecated langs>]
+        'en': ['en-us', 'en-ca', 'en-uk', 'en-gb', 'en-au', 'en-gh', 'en-in',
+               'en-ie', 'en-nz', 'en-ng', 'en-ph', 'en-za', 'en-tz'],
+        'fr': ['fr-ca', 'fr-fr'],
+        'pt': ['pt-br', 'pt-pt'],
+        'es': ['es-es', 'es-us'],
+        'zh-CN': ['zh-cn'],
+        'zh-TW': ['zh-tw'],
+    }
 
-    soup = BeautifulSoup(content, 'html.parser')
+    for fallback_lang, deprecated_langs in deprecated.items():
+        if lang.lower() in deprecated_langs:
+            msg = f"'{lang}' has been deprecated, falling back to '{fallback_lang}'."
 
-    js_path = soup.find(src=re.compile('translate_m.js'))['src']
+            warn(msg, DeprecationWarning)
+            log.warning(msg)
 
-    async with session.get(f'http://translate.google.com/{js_path}') as r:
-        js_contents = await r.text()
+            return fallback_lang
 
-    # Approximately extract TTS-enabled language codes
-    # RegEx pattern search because minified variables can change.
-    # Extra garbage will be dealt with later as we keep languages only.
-    # In: "[...]Fv={af:1,ar:1,[...],zh:1,"zh-cn":1,"zh-tw":1}[...]"
-    # Out: ['is', '12', [...], 'af', 'ar', [...], 'zh', 'zh-cn', 'zh-tw']
-    pattern = r'[{,\"](\w{2}|\w{2}-\w{2,3})(?=:1|\":1)'
-    g_langs = re.findall(pattern, js_contents)
-
-    # Build lang. dict. from main page (JavaScript object populating lang. menu)
-    # Filtering with the TTS-enabled languages
-    # In: "{code:'auto',name:'Detect language'},{code:'af',name:'Afrikaans'},[...]"
-    # re.findall: [('auto', 'Detect language'), ('af', 'Afrikaans'), [...]]
-    # Out: {'af': 'Afrikaans', [...]}
-    trans_pattern = r"{code:'(?P<lang>.+?[^'])',name:'(?P<name>.+?[^'])'}"
-    trans_langs = re.findall(trans_pattern, text)
-    return {lang: name for lang, name in trans_langs if lang in g_langs}
+    return lang

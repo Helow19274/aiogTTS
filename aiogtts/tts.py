@@ -1,61 +1,105 @@
-import logging
+import re
+import json
+import base64
 import aiohttp
 import asyncio
+import logging
 
-from .token import Token
-from .lang import tts_langs
-from .utils import _minimize, _clean_tokens
+from urllib.parse import quote
+from .lang import tts_langs, _fallback_deprecated_lang
+from .utils import _minimize, _clean_tokens, _translate_url
 from .tokenizer import pre_processors, Tokenizer, tokenizer_cases
+
+__all__ = ['aiogTTS', 'aiogTTSError']
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class aiogTTS(object):
-    """aiogTTS -- Async Google Text-to-Speech.
+class Speed:
+    """Read Speed
 
-    An interface to Google Translate's Text-to-Speech API.
-    :param pre_processor_funcs: A list of zero or more functions that are
-        called to transform (pre-process) text before tokenizing. Those
-        functions must take a string and return a string
-    :type pre_processor_funcs: list
-
-    :param tokenizer_func: A function that takes in a string and returns a list of string (tokens)
-    :type tokenizer_func: callable
-
-    :raises: ValueError, RuntimeError
+    The Google TTS Translate API supports two speeds:
+        Slow: True
+        Normal: None
     """
 
-    GOOGLE_TTS_MAX_CHARS = 100
+    SLOW = True
+    NORMAL = None
 
-    def __init__(self, pre_processor_funcs=None, tokenizer_func=None):
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0'}
-        self.session = aiohttp.ClientSession(headers=headers)
 
-        if pre_processor_funcs is None:
-            self.pre_processor_funcs = [
+class aiogTTS:
+    """aiogTTS -- Google Text-to-Speech.
+
+    An interface to Google Translate's Text-to-Speech API.
+
+    Args:
+        pre_processor_funcs (list): A list of zero or more functions that are
+            called to transform (pre-process) text before tokenizing. Those
+            functions must take a string and return a string. Defaults to::
+
+                [
+                    pre_processors.tone_marks,
+                    pre_processors.end_of_line,
+                    pre_processors.abbreviations,
+                    pre_processors.word_sub
+                ]
+
+        tokenizer_func (callable): A function that takes in a string and
+            returns a list of string (tokens). Defaults to::
+
+                Tokenizer([
+                    tokenizer_cases.tone_marks,
+                    tokenizer_cases.period_comma,
+                    tokenizer_cases.colon,
+                    tokenizer_cases.other_punctuation
+                ]).run
+
+    See Also:
+        :doc:`Pre-processing and tokenizing <tokenizer>`
+
+    Raises:
+        AssertionError: When ``text`` is ``None`` or empty; when there's nothing
+            left to speak after pre-precessing, tokenizing and cleaning.
+        ValueError: When ``lang_check`` is ``True`` and ``lang`` is not supported.
+        RuntimeError: When ``lang_check`` is ``True`` but there's an error loading
+            the languages dictionary.
+    """
+
+    GOOGLE_TTS_MAX_CHARS = 100  # Max characters the Google TTS API takes at a time
+    GOOGLE_TTS_HEADERS = {
+        'Referer': 'http://translate.google.com/',
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; WOW64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/47.0.2526.106 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
+    }
+    GOOGLE_TTS_RPC = 'jQ1olc'
+
+    def __init__(
+            self,
+            pre_processor_funcs=[
                 pre_processors.tone_marks,
                 pre_processors.end_of_line,
                 pre_processors.abbreviations,
                 pre_processors.word_sub
-            ]
-        else:
-            self.pre_processor_funcs = pre_processor_funcs
-
-        if tokenizer_func is None:
-            self.tokenizer_func = Tokenizer([
+            ],
+            tokenizer_func=Tokenizer([
                 tokenizer_cases.tone_marks,
                 tokenizer_cases.period_comma,
                 tokenizer_cases.colon,
                 tokenizer_cases.other_punctuation
             ]).run
-        else:
-            self.tokenizer_func = tokenizer_func
+    ):
 
-        self.token = Token(self.session)
+        self.session = aiohttp.ClientSession()
+
+        self.pre_processor_funcs = pre_processor_funcs
+        self.tokenizer_func = tokenizer_func
 
     def __del__(self):
-        return asyncio.get_event_loop().create_task(self.session.close())
+        asyncio.get_event_loop().create_task(self.session.close())
 
     def _tokenize(self, text):
         text = text.strip()
@@ -75,140 +119,180 @@ class aiogTTS(object):
         min_tokens = []
         for t in tokens:
             min_tokens += _minimize(t, ' ', self.GOOGLE_TTS_MAX_CHARS)
+
+        min_tokens = [t for t in min_tokens if t]
+
         return min_tokens
 
-    async def write_to_fp(self, text, fp, lang='en', slow=False, lang_check=True):
-        """Do the TTS API request and write bytes to a file-like object.
+    def _prepare_requests(self, text, lang, tld, slow, lang_check):
+        """Created the TTS API the request(s) without sending them.
 
-        :param text: Text to speak
-        :type text: str
-
-        :param fp: Any file-like object to write the mp3 to
-        :type fp: file-like
-
-        :param lang: Language
-        :type lang: str
-
-        :param slow: If slow, speed == 0.3
-        :type slow: bool
-
-        :param lang_check: Check if :param:`lang` in list of TTS languages
-        :type lang_check: bool
-
-        :raises: :class:`aiogTTSError`:, TypeError
+        Returns:
+            list: ``requests.PreparedRequests_``. <https://2.python-requests.org/en/master/api/#requests.PreparedRequest>`_``.
         """
 
-        if not text:
-            raise ValueError('No text to speak')
-
-        lang = lang.lower()
         if lang_check:
+            lang = _fallback_deprecated_lang(lang)
+
             try:
-                if lang not in await tts_langs(self.session):
+                if lang not in tts_langs():
                     raise ValueError(f'Language not supported: {lang}')
             except RuntimeError as e:
                 log.debug(str(e), exc_info=True)
                 log.warning(str(e))
 
+        translate_url = _translate_url(tld=tld, path='_/TranslateWebserverUi/data/batchexecute')
+
         text_parts = self._tokenize(text)
-        log.debug(f'text_parts: {len(text_parts)}')
-        if not text_parts:
-            raise ValueError('No text to send to TTS API')
+        log.debug(f'text_parts: {text_parts}')
+        assert text_parts, 'No text to send to TTS API'
 
+        prepared_requests = []
         for idx, part in enumerate(text_parts):
+            data = self._package_rpc(part, lang, slow)
+
+            log.debug(f'data-{idx}: {data}')
+
+            r = self.session.post(translate_url, data=data, headers=self.GOOGLE_TTS_HEADERS)
+
+            prepared_requests.append(r)
+
+        return prepared_requests
+
+    def _package_rpc(self, text, lang, slow):
+        parameter = [text, lang, Speed.SLOW if slow else Speed.NORMAL, 'null']
+        escaped_parameter = json.dumps(parameter, separators=(',', ':'))
+
+        rpc = [[[self.GOOGLE_TTS_RPC, escaped_parameter, None, 'generic']]]
+        escaped_rpc = json.dumps(rpc, separators=(',', ':'))
+        return f'f.req={quote(escaped_rpc)}&'
+
+    async def write_to_fp(self, text, fp, lang='en', tld='com', slow=False, lang_check=True):
+        """Do the TTS API request(s) and write bytes to a file-like object.
+
+        Args:
+            text (string): The text to be read
+            fp (file object): The path and file name to save the ``mp3`` to.
+            lang (string, optional): The language (IETF language tag) to
+                read the text in. Default is ``en``.
+            tld (string, optional): Top-level domain for the Google Translate host,
+                i.e `https://translate.google.<tld>`. Different Google domains
+                can produce different localized 'accents' for a given
+                language. This is also useful when ``google.com`` might be blocked
+                within a network but a local or different Google host
+                (e.g. ``google.cn``) is not. Default is ``com``.
+            slow (bool, optional): Reads text more slowly. Defaults to ``False``.
+            lang_check (bool, optional): Strictly enforce an existing ``lang``,
+                to catch a language error early. If set to ``True``,
+                a ``ValueError`` is raised if ``lang`` doesn't exist.
+                Setting ``lang_check`` to ``False`` skips Web requests
+                (to validate language) and therefore speeds up instantiation.
+                Default is ``True``.
+
+        Raises:
+            :class:`aiogTTSError`: When there's an error with the API request.
+            TypeError: When ``fp`` is not a file-like object that takes bytes.
+        """
+
+        prepared_requests = self._prepare_requests(text, lang, tld, slow, lang_check)
+        for idx, pr in enumerate(prepared_requests):
             try:
-                part_tk = await self.token.calculate_token(part)
-            except aiohttp.client_exceptions.ClientError as e:
-                log.debug(str(e), exc_info=True)
-                raise aiogTTSError(f'Connection error during token calculation: {str(e)}')
-
-            payload = {'ie': 'UTF-8',
-                       'q': part,
-                       'tl': lang,
-                       'ttsspeed': '0.3' if slow else '1',
-                       'total': len(text_parts),
-                       'idx': idx,
-                       'client': 'tw-ob',
-                       'textlen': len(part),
-                       'tk': part_tk}
-
-            log.debug(f'payload-{idx}: {payload}')
-
-            try:
-                async with self.session.get('https://translate.google.com/translate_tts', params=payload) as r:
+                async with pr as r:
                     log.debug(f'headers-{idx}: {r.headers}')
                     log.debug(f'url-{idx}: {r.real_url}')
                     log.debug(f'status-{idx}: {r.status}')
+
                     r.raise_for_status()
-
-                    async for chunk in r.content.iter_chunked(1024):
-                        fp.write(chunk)
-
-                    log.debug(f'part-{idx} written to {fp}')
-            except aiohttp.client_exceptions.ClientResponseError:
-                # Request successful, bad response
-                raise aiogTTSError(lang=lang, lang_check=lang_check, response=r)
-            except aiohttp.client_exceptions.ClientConnectionError as e:
-                # Request failed
-                raise aiogTTSError(str(e))
+                    decoded_line = await r.text()
+                    if 'jQ1olc' in decoded_line:
+                        audio_search = re.search(r'jQ1olc","\[\\"(.*)\\"]', decoded_line)
+                        if audio_search:
+                            as_bytes = audio_search.group(1).encode('ascii')
+                            decoded = base64.b64decode(as_bytes)
+                            fp.write(decoded)
+                        else:
+                            raise aiogTTSError(tts=self, response=r)
+                log.debug(f'part-{idx} written to {fp}')
             except (AttributeError, TypeError) as e:
-                raise TypeError(f"'fp' is not a file-like object or it does not take bytes: {str(e)}")
+                raise TypeError(f"'fp' is not a file-like object or it does not take bytes: {e}")
 
-    async def save(self, text, savefile, lang='en', slow=False, lang_check=True):
-        """Do the TTS API request and write bytes to a file-like object.
+            except aiohttp.ClientResponseError as e:
+                log.debug(e.message)
+                raise aiogTTSError(tts=self, response=r)
+            except aiohttp.ClientConnectionError as e:
+                log.debug(str(e))
+                raise aiogTTSError(tts=self)
 
-        :param text: Text to speak
-        :type text: str
+    async def save(self, text, filename, lang='en', tld='com', slow=False, lang_check=True):
+        """Do the TTS API request and write result to file.
 
-        :param savefile: Name of file to write the mp3 to
-        :type savefile: str
+        Args:
+            text (string): The text to be read
+            filename (string): The path and file name to save the ``mp3`` to.
+            lang (string, optional): The language (IETF language tag) to
+                read the text in. Default is ``en``.
+            tld (string, optional): Top-level domain for the Google Translate host,
+                i.e `https://translate.google.<tld>`. Different Google domains
+                can produce different localized 'accents' for a given
+                language. This is also useful when ``google.com`` might be blocked
+                within a network but a local or different Google host
+                (e.g. ``google.cn``) is not. Default is ``com``.
+            slow (bool, optional): Reads text more slowly. Defaults to ``False``.
+            lang_check (bool, optional): Strictly enforce an existing ``lang``,
+                to catch a language error early. If set to ``True``,
+                a ``ValueError`` is raised if ``lang`` doesn't exist.
+                Setting ``lang_check`` to ``False`` skips Web requests
+                (to validate language) and therefore speeds up instantiation.
+                Default is ``True``.
 
-        :param lang: Language
-        :type lang: str
-
-        :param slow: If slow, speed == 0.3
-        :type slow: bool
-
-        :param lang_check: Check if :param:`lang` in list of TTS languages
-        :type lang_check: bool
-
-        :raises: :class:`aiogTTSError`:, TypeError
+        Raises:
+            :class:`aiogTTSError`: When there's an error with the API request.
         """
 
-        with open(str(savefile), 'wb') as f:
-            await self.write_to_fp(text, f, lang, slow, lang_check)
-            log.debug(f'Saved to {savefile}')
+        with open(str(filename), 'wb') as f:
+            await self.write_to_fp(text, f, lang, tld, slow, lang_check)
+            log.debug(f'Saved to {filename}')
 
 
 class aiogTTSError(Exception):
     """Exception that uses context to present a meaningful error message"""
 
     def __init__(self, msg=None, **kwargs):
-        self.lang_check = kwargs.pop('lang_check', None)
-        self.lang = kwargs.pop('lang', None)
+        self.tts = kwargs.pop('tts', None)
         self.rsp = kwargs.pop('response', None)
         if msg:
             self.msg = msg
-        elif self.lang is not None and self.lang_check is not None and self.rsp is not None:
-            self.msg = self.infer_msg()
+        elif self.tts is not None:
+            self.msg = self.infer_msg(self.tts, self.rsp)
         else:
             self.msg = None
         super(aiogTTSError, self).__init__(self.msg)
 
-    def infer_msg(self):
+    def infer_msg(self, tts, rsp=None):
         """Attempt to guess what went wrong by using known
         information (e.g. http response) and observed behaviour
         """
 
-        status = self.rsp.status
-        reason = self.rsp.reason
-
         cause = 'Unknown'
-        if status == 403:
-            cause = 'Bad token or upstream API changes'
-        elif status == 404 and not self.lang_check:
-            cause = f"Unsupported language '{self.lang}'"
-        elif status >= 500:
-            cause = 'Upstream API error. Try again later'
 
-        return f'{status} ({reason}) from TTS API. Probable cause: {cause}'
+        if rsp is None:
+            premise = 'Failed to connect'
+
+            if tts.tld != 'com':
+                host = _translate_url(tld=tts.tld)
+                cause = f"Host '{host}' is not reachable"
+
+        else:
+            status = rsp.status
+            reason = rsp.reason
+
+            premise = f'{status} ({reason}) from TTS API'
+
+            if status == 403:
+                cause = 'Bad token or upstream API changes'
+            elif status == 200:
+                cause = f"No audio stream in response. Most probably the problem is in an unsupported language"
+            elif status >= 500:
+                cause = 'Upstream API error. Try again later.'
+
+        return f'{premise}. Probable cause: {cause}'

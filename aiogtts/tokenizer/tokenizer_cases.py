@@ -8,13 +8,15 @@ def tone_marks():
     not be any space after a tone-modifying punctuation mark.
     """
 
-    return RegexBuilder(pattern_args=symbols.TONE_MARKS, pattern_func=lambda x: f'(?<={x}).').regex
+    return RegexBuilder(
+        pattern_args=symbols.TONE_MARKS,
+        pattern_func=lambda x: f'(?<={x}).').regex
 
 
 def period_comma():
     """Period and comma case.
 
-    Match if not preceded by ".<letter>" and only if followed by space.
+    Match if not preceded by '.<letter>' and only if followed by space.
     Won't cut in the middle/after dotted abbreviations; won't cut numbers.
 
     Note:
@@ -24,17 +26,21 @@ def period_comma():
         Won't match the end of a sentence if not followed by a space.
     """
 
-    return RegexBuilder(pattern_args=symbols.PERIOD_COMMA, pattern_func=lambda x: r'(?<!\.[a-z]){} '.format(x)).regex
+    return RegexBuilder(
+        pattern_args=symbols.PERIOD_COMMA,
+        pattern_func=lambda x: rf'(?<!\.[a-z]){x} ').regex
 
 
 def colon():
     """Colon case.
 
-    Match a colon ":" only if not preceded by a digit.
+    Match a colon ':' only if not preceded by a digit.
     Mainly to prevent a cut in the middle of time notations e.g. 10:01
     """
 
-    return RegexBuilder(pattern_args=symbols.COLON, pattern_func=lambda x: r'(?<!\d){}'.format(x)).regex
+    return RegexBuilder(
+        pattern_args=symbols.COLON,
+        pattern_func=lambda x: rf'(?<!\d){x}').regex
 
 
 def other_punctuation():
@@ -44,14 +50,23 @@ def other_punctuation():
     inserts a break in speech.
     """
 
-    punc = ''.join(set(symbols.ALL_PUNC) - set(symbols.TONE_MARKS) - set(symbols.PERIOD_COMMA) - set(symbols.COLON))
-    return RegexBuilder(pattern_args=punc, pattern_func=lambda x: str(x)).regex
+    punc = ''.join(
+        set(symbols.ALL_PUNC) -
+        set(symbols.TONE_MARKS) -
+        set(symbols.PERIOD_COMMA) -
+        set(symbols.COLON))
+    return RegexBuilder(
+        pattern_args=punc,
+        pattern_func=lambda x: x).regex
 
 
 def legacy_all_punctuation():
     """Match all punctuation.
 
-    Use as only tokenizer case to mimic gTTS 1.x tokenization.
+    Use as only tokenizer case to mimic aiogTTS 1.x tokenization.
     """
 
-    return RegexBuilder(pattern_args=symbols.ALL_PUNC, pattern_func=lambda x: str(x)).regex
+    punc = symbols.ALL_PUNC
+    return RegexBuilder(
+        pattern_args=punc,
+        pattern_func=lambda x: x).regex

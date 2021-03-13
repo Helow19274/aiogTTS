@@ -9,8 +9,8 @@ def test_tone_marks():
 
 
 def test_end_of_line():
-    _in = """test-
-ing"""
+    _in = '''test-
+ing'''
     _out = 'testing'
     assert end_of_line(_in) == _out
 
@@ -22,8 +22,8 @@ def test_abbreviations():
 
 
 def test_word_sub():
-    _in = 'M. Bacon'
-    _out = 'Monsieur Bacon'
+    _in = 'Esq. Bacon'
+    _out = 'Esquire Bacon'
     assert word_sub(_in) == _out
 
 

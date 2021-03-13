@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='aiogTTS',
-    version='1.0.1',
+    version='1.1.0',
 
     author='Helow19274',
     author_email='helow@helow19274.tk',
@@ -24,6 +24,8 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Software Development :: Libraries',
         'Topic :: Multimedia :: Sound/Audio :: Speech'

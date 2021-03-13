@@ -50,21 +50,21 @@ async def test_tts(tmp_path, lang):
 
 
 @pytest.mark.asyncio
-async def test_unsupported_language_check():
+async def test_unsupported_language_check(tmp_path):
     """Raise ValueError on unsupported language (with language check)"""
     lang = 'xx'
     text = 'Lorem ipsum'
     check = True
     with pytest.raises(ValueError):
-        await aiogTTS().save(text, 'test.mp3', lang=lang, lang_check=check)
+        await aiogTTS().save(text, tmp_path / 'test.mp3', lang=lang, lang_check=check)
 
 
 @pytest.mark.asyncio
-async def test_empty_string():
+async def test_empty_string(tmp_path):
     """Raise AssertionError on empty string"""
     text = ''
     with pytest.raises(AssertionError):
-        await aiogTTS().save(text, 'test.mp3')
+        await aiogTTS().save(text, tmp_path / 'test.mp3')
 
 
 @pytest.mark.asyncio

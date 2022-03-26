@@ -93,13 +93,27 @@ class aiogTTS:
             ]).run
     ):
 
-        self.session = aiohttp.ClientSession()
+        self.s = None
 
         self.pre_processor_funcs = pre_processor_funcs
         self.tokenizer_func = tokenizer_func
 
     def __del__(self):
         asyncio.get_event_loop().create_task(self.session.close())
+
+    @property
+    def session(self):
+        return self.s
+
+    @session.getter
+    def session(self):
+        if self.s is None:
+            self.s = aiohttp.ClientSession()
+        return self.s
+
+    @session.setter
+    def session(self, v):
+        self.s = v
 
     def _tokenize(self, text):
         text = text.strip()
